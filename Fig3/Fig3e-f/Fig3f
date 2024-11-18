@@ -118,6 +118,7 @@ for (exp_id in rownames(C4_sig_info_selected)) {
     print(paste("Warning: id", id, "is out of range for lincs_signature_selected"))
   }
 }
+save(C4_dz_cmap_scores,file='./lincs_myself/C4_dz_cmap_scoress_MCF7_6h_allconcentration.RData')
 
 #==========================
 ######## Compute the cmap randoms
@@ -145,9 +146,10 @@ for (exp_id in random_sig_ids){
 rand_cmap_scores <- random_cmap_scores 
 save(rand_cmap_scores,file='./lincs_myself/C4_cmap_randoms_MCF7_6h_allconcentration.RData')
 
-# Compute the significance
+#==========================
+######## Compute the significance and save the min score of the same drug
 print("Loading random scores for subset")
-load('./lincs_myself/C4_cmap_randoms.RData')
+load('./lincs_myself/C4_cmap_randoms_MCF7_6h_allconcentration.RData')
 random_scores <- unlist(rand_cmap_scores)
 # Frequency-based p-value using absolute scores from sampling distribution to approximate two-tailed p-value
 print("COMPUTING p-values")
@@ -185,6 +187,8 @@ C4_cmap$rank <- 1:nrow(C4_cmap)
 C4_cmap$cmap_score <- as.numeric(as.character(C4_cmap$cmap_score))
 C4_cmap$rank <- as.numeric(C4_cmap$rank)
 
+#==========================
+######## Draw the CMap score plot in Fig.3f
 library(ggplot2)
 library(grid)
 library(gridExtra)
