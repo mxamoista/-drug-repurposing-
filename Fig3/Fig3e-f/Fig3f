@@ -89,6 +89,7 @@ C4_dz_signature <- subset(C4_dz_signature, GeneID %in% gene.list)
 C4_dz_genes_up <- subset(C4_dz_signature,up_down=="up",select="GeneID")
 C4_dz_genes_down <- subset(C4_dz_signature,up_down=="down",select="GeneID")
 
+#==========================
 ######## COMPUTE_CONNECTIVITY SCORE OF LINCS
 C4_dz_cmap_scores <- NULL
 count <- 0
@@ -117,6 +118,32 @@ for (exp_id in rownames(C4_sig_info_selected)) {
     print(paste("Warning: id", id, "is out of range for lincs_signature_selected"))
   }
 }
+
+#==========================
+######## Compute the cmap randoms
+N_PERMUTATIONS <- 100000 #default 100000
+random_sig_ids <- sample(colnames(lincs_signature_selected),N_PERMUTATIONS,replace=T)
+count <- 0
+random_cmap_scores <- NULL
+for (exp_id in random_sig_ids){
+  count <- count + 1
+  print(paste("Processing item", count, "- exp_id:", exp_id))
+  id <- which(colnames(lincs_signature_selected) == exp_id)
+  print(count)
+  if (landmark ==1){
+    cmap_exp_signature <- data.frame(gene.list,  rank(-1 * lincs_signature_selected[, id], ties.method="random"))    
+  }else{
+    cmap_exp_signature <- data.frame(gene.list,  lincs_signature_selected[, id])    
+  }
+  colnames(cmap_exp_signature) <- c("ids","rank")
+  
+  random_input_signature_genes <- sample(gene.list, (nrow(C4_dz_genes_up)+nrow(C4_dz_genes_down)))
+  rand_dz_gene_up <- data.frame(GeneID=random_input_signature_genes[1:nrow(C4_dz_genes_up)])
+  rand_dz_gene_down <- data.frame(GeneID=random_input_signature_genes[(nrow(C4_dz_genes_up)+1):length(random_input_signature_genes)])
+  random_cmap_scores <- c(random_cmap_scores, cmap_score(rand_dz_gene_up,rand_dz_gene_down,cmap_exp_signature))
+}
+rand_cmap_scores <- random_cmap_scores 
+save(rand_cmap_scores,file='./lincs_myself/C4_cmap_randoms_MCF7_6h_allconcentration.RData')
 
 # Compute the significance
 print("Loading random scores for subset")
