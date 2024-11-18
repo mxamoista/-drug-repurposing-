@@ -1,0 +1,223 @@
+library(DESeq2)
+library(qvalue)
+library("gplots")
+library(RColorBrewer)
+library("plyr")
+library(grid)
+k<-4
+dataset <- get_processed_dataset(sce.final)
+hc <- metadata(sce.final)$sc3$consensus[[as.character(k)]]$hc
+col_data <- colData(sce.final)
+table(col_data[,"sc3_4_clusters"])
+ht_ann <- col_data
+
+ht_ann$sc3_4_clusters  <- sub("^1","C1",ht_ann$sc3_4_clusters)
+ht_ann$sc3_4_clusters  <- sub("^2","C2",ht_ann$sc3_4_clusters)
+ht_ann$sc3_4_clusters  <- sub("^3","C3",ht_ann$sc3_4_clusters)
+ht_ann$sc3_4_clusters  <- sub("^4","C4",ht_ann$sc3_4_clusters)
+
+annotation_col = data.frame(row.names = rownames(ht_ann), cluster=as.factor(ht_ann$sc3_4_clusters)) 
+
+C1 <- annotation_col[annotation_col$cluster == "C1", , drop = FALSE]
+C2 <- annotation_col[annotation_col$cluster == "C2", , drop = FALSE]
+C3 <- annotation_col[annotation_col$cluster == "C3", , drop = FALSE]
+C4 <- annotation_col[annotation_col$cluster == "C4", , drop = FALSE]
+
+C1.matrix <- matrix.filter.final[,rownames(C1)]
+C2.matrix <- matrix.filter.final[,rownames(C2)]
+C3.matrix <- matrix.filter.final[,rownames(C3)]
+C4.matrix <- matrix.filter.final[,rownames(C4)]
+
+C1VSOthers.matrix <- cbind(C2.matrix,C3.matrix,C4.matrix)
+C1VSOthers<-cbind(C1VSOthers.matrix ,C1.matrix)
+matrix.roundC1VSOthers <- round(C1VSOthers)
+conditionC1VSOthers <- factor(c(rep("Others",51),rep("C1",80)))
+colDataC1VSOthers <- data.frame(
+  sample_id = colnames(C1VSOthers),
+  conditionC1VSOther = conditionC1VSOthers,
+  stringsAsFactors = FALSE
+)
+
+# Ensure the condition column is a factor with "Others" as the reference level
+colDataC1VSOthers$conditionC1VSOthers <- factor(colDataC1VSOthers$conditionC1VSOther, levels = c("Others", "C1"))
+
+ddsC1VSOthers <- DESeqDataSetFromMatrix(countData = matrix.roundC1VSOthers,
+                                        colData = colDataC1VSOthers,
+                                        design = ~ conditionC1VSOthers)
+# Run the DESeq analysis
+ddsC1VSOthers <- DESeq(ddsC1VSOthers)
+
+# Get the results, with "C1" compared to "Others" (the default behavior)
+resC1VSOthers <- results(ddsC1VSOthers)
+
+resC1VSOthers <- data.frame(resC1VSOthers, stringsAsFactors = FALSE, check.names = FALSE)# res format conversion: use data.frame to convert to table form
+
+resC1VSOthers$gene <- rownames(resC1VSOthers)
+
+resC1VSOthers <- subset(resC1VSOthers, padj < 1E-2 & abs(log2FoldChange) > 1 & abs(log2FoldChange) != Inf)
+
+# transfer gene into GeneID
+library(biomaRt)
+# Connect to the human genes dataset
+mart <- useMart("ensembl", dataset="hsapiens_gene_ensembl")
+
+# Get the mapping
+gene_ids_C1 <- getBM(attributes=c("hgnc_symbol", "entrezgene_id"),
+                     filters="hgnc_symbol",
+                     values=rownames(resC1VSOthers),
+                     mart=mart)
+
+# Merge with your dataframe
+C1_dz_signature <- merge(resC1VSOthers, gene_ids_C1, by.x="gene", by.y="hgnc_symbol", all.x=TRUE)
+C1_dz_signature$entrezgene_id
+#for cmap, more stringent
+C1_dz_signature <- subset(C1_dz_signature, !is.na(entrezgene_id) & entrezgene_id !='?')
+
+C1_dz_signature <- subset(C1_dz_signature, select=c("entrezgene_id","gene", "log2FoldChange", "padj"))
+names(C1_dz_signature) <- c("GeneID", "Symbol", "value", "padj")
+C1_dz_signature <- subset(C1_dz_signature, !is.na(value))
+C1_dz_signature <- C1_dz_signature[order(C1_dz_signature$value),]
+
+C1_dz_signature$up_down <- "up"
+C1_dz_signature$up_down[C1_dz_signature$value < 0] <- "down"
+
+#gene.list
+C1_gene.list <- C1_landmark_data$pr_gene_id
+
+#load gist genes
+C1_dz_signature <- subset(C1_dz_signature, GeneID %in% gene.list)
+C1_dz_genes_up <- subset(C1_dz_signature,up_down=="up",select="GeneID")
+C1_dz_genes_down <- subset(C1_dz_signature,up_down=="down",select="GeneID")
+
+#==========================
+######## COMPUTE_CONNECTIVITY SCORE OF LINCS
+C1_dz_cmap_scores <- NULL
+count <- 0
+C1_dz_cmap_scores <- numeric()  # Initialize if not already done
+landmark <- 0
+for (exp_id in rownames(C1_sig_info_selected)) {
+  count <- count + 1
+  print(paste("Processing item", count, "- exp_id:", exp_id))
+  
+  id <- which(colnames(C1_lincs_signature_selected) == exp_id)
+  
+  if (length(id) == 0) {
+    print(paste("Warning: exp_id", exp_id, "not found in colnames of lincs_signature_selected"))
+    next  # Skip to the next iteration
+  }
+  
+  if (id <= ncol(C1_lincs_signature_selected)) {
+    if (landmark == 1) {
+      C1_cmap_exp_signature <- data.frame(C1_gene.list, rank(-1 * C1_lincs_signature_selected[, id], ties.method="random"))    
+    } else {
+      C1_cmap_exp_signature <- data.frame(C1_gene.list, C1_lincs_signature_selected[, id])    
+    }
+    colnames(C1_cmap_exp_signature) <- c("ids", "rank")
+    C1_dz_cmap_scores <- c(C1_dz_cmap_scores, cmap_score(C1_dz_genes_up, C1_dz_genes_down, C1_cmap_exp_signature))
+  } else {
+    print(paste("Warning: id", id, "is out of range for lincs_signature_selected"))
+  }
+}
+save(C1_dz_cmap_scores,file='./lincs_myself/C1_dz_cmap_scoress_PC3_6h_allconcentration.RData')
+
+#==========================
+######## Compute the cmap randoms
+N_PERMUTATIONS <- 100000 #default 100000
+C1_random_sig_ids <- sample(colnames(C1_lincs_signature_selected),N_PERMUTATIONS,replace=T)
+count <- 0
+C1_random_cmap_scores <- NULL
+for (exp_id in C1_random_sig_ids){
+  count <- count + 1
+  print(paste("Processing item", count, "- exp_id:", exp_id))
+  id <- which(colnames(C1_lincs_signature_selected) == exp_id)
+  print(count)
+  if (landmark ==1){
+    C1_cmap_exp_signature_randoms <- data.frame(C1_gene.list,  rank(-1 * C1_lincs_signature_selected[, id], ties.method="random"))    
+  }else{
+    C1_cmap_exp_signature_randoms <- data.frame(C1_gene.list,  C1_lincs_signature_selected[, id])    
+  }
+  colnames(C1_cmap_exp_signature_randoms) <- c("ids","rank")
+  
+  C1_random_input_signature_genes <- sample(C1_gene.list, (nrow(C1_dz_genes_up)+nrow(C1_dz_genes_down)))
+  C1_rand_dz_gene_up <- data.frame(GeneID=C1_random_input_signature_genes[1:nrow(C1_dz_genes_up)])
+  C1_rand_dz_gene_down <- data.frame(GeneID=C1_random_input_signature_genes[(nrow(C1_dz_genes_up)+1):length(C1_random_input_signature_genes)])
+  C1_random_cmap_scores <- c(C1_random_cmap_scores, cmap_score(C1_rand_dz_gene_up,C1_rand_dz_gene_down,C1_cmap_exp_signature_randoms))
+}
+#rand_cmap_scores <- random_cmap_scores 
+save(C1_random_cmap_scores,file='./lincs_myself/C1_random_cmap_PC3_6h_allconcentration.RData')
+
+#==========================
+######## Compute the significance and save the min score of the same drug
+print("Loading random scores for subset")
+load('./lincs_myself/C1_cmap_randoms_PC3_6h_allconcentration.RData')
+C1_random_scores <- unlist(C1_random_cmap_scores)
+# Frequency-based p-value using absolute scores from sampling distribution to approximate two-tailed p-value
+print("COMPUTING p-values")
+C1_p_values <- sapply(C1_dz_cmap_scores,function(score) {
+  length(which(abs(C1_random_scores) >= abs(score))) / length(C1_random_scores)
+})
+print("COMPUTING q-values")
+library(qvalue)
+C1_q_values <- qvalue(C1_p_values)$qvalues
+
+C1_sig_info_selected$id <- rownames(C1_sig_info_selected)
+C1_sig_info_selected <- C1_sig_info_selected[!duplicated(C1_sig_info_selected$id),]
+C1_sig.ids <- C1_sig_info_selected$id
+C1_drugs <- data.frame(exp_id = C1_sig.ids, cmap_score = C1_dz_cmap_scores, p = C1_p_values, q = C1_q_values)
+C1_results = list(C1_drugs, C1_dz_signature)
+
+drug_preds <- results[[1]] #from cmap_predictions.RData
+dz_signature <- results[[2]]
+C1_drug_instances_all <- merge(C1_drugs, C1_sig_info_selected, by.x="exp_id", by.y="id")
+save(C1_drug_instances_all, file=("./lincs_myself/C1_lincs_predictions_PC3_6h_allconcentration.RData"))
+
+# min score of the same drug
+C1_drug_all_min_score <- aggregate(cmap_score ~ pert_iname,C1_drug_instances_all, min)
+C1_drug_all_min_score <- C1_drug_all_min_score[order(C1_drug_all_min_score$cmap_score), ]
+
+C1_drug_all_min_score$rank <- 1:nrow(C1_drug_all_min_score )
+C1_cmap = data.frame(row.names = as.factor(C1_drug_all_min_score$rank),cmap_score=as.factor(C1_drug_all_min_score$cmap_score), drug=as.factor(C1_drug_all_min_score$pert_iname) )
+C1_cmap <- C1_cmap[order(C1_cmap$cmap_score),]
+C1_cmap$rank <- 1:nrow(C1_cmap)
+C1_cmap$cmap_score <- as.numeric(as.character(C1_cmap$cmap_score))
+C1_cmap$rank <- as.numeric(C1_cmap$rank)
+
+#==========================
+######## Draw the CMap score plot in Fig.3e
+library(ggplot2)
+library(grid)
+library(gridExtra)
+# Base plot
+# Select multiple compounds for labeling
+label_compounds_C1 <- C1_cmap[C1_cmap$drug %in% c("glutamine"), ]
+library(ggrepel)
+p_C1 <- ggplot(C1_cmap, aes(x = rank, y = cmap_score)) +
+  geom_point(size = 3, color = "black") +
+  geom_line() +
+  geom_hline(yintercept = 0, color = "gray50") +
+  theme_minimal() +
+  labs(x = "Compound rank", y = "CMap score", 
+       title = "CMap score for C1") +
+  scale_x_continuous(limits = c(0, max(C1_cmap$rank)), 
+                     expand = c(0.02, 0)) +
+  scale_y_continuous(limits = c(min(C1_cmap$cmap_score), max(C1_cmap$cmap_score)), 
+                     expand = c(0.02, 0)) +
+  theme(panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        axis.line = element_line(color = "black"),
+        plot.margin = margin(10, 10, 10, 10),
+        axis.text = element_text(size = 12, face = "bold"),  # Increase text size and make bold
+        axis.title = element_text(size = 14, face = "bold"),  # Increase title size and make bold
+        axis.ticks = element_line(color = "black", size = 0.5),  # Make ticks more visible
+        axis.ticks.length = unit(0.2, "cm"))
+
+# Add stacked line effect for multiple compounds
+p_C1 <- p_C1 +
+  geom_point(data = label_compounds_C1, aes(x = rank, y = cmap_score), 
+             color = "red", size = 3) +
+  geom_text_repel(data = label_compounds_C1, 
+                  aes(x = rank, y = cmap_score, 
+                      label = paste0(drug, "\n", round(cmap_score, 4))),
+                  color = "red", box.padding = 2, point.padding = 2, size = 6)
+
+
