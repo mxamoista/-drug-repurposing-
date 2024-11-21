@@ -165,13 +165,10 @@ print("COMPUTING q-values")
 library(qvalue)
 q_values <- qvalue(p_values)$qvalues
 
-
-#lincs_signatures <- lincs_signatures[, 1:1000]
+#get candidate drugs
 C4_sig_info_selected$id <- rownames(C4_sig_info_selected)
-#remove duplicate instances
-C4_sig_info_selected <- C4_sig_info_selected[!duplicated(C4_sig_info_selected$id),]
+C4_sig_info_selected <- C4_sig_info_selected[!duplicated(C4_sig_info_selected$id),]#remove duplicate instances
 C4_sig.ids <- C4_sig_info_selected$id
-
 C4_drugs <- data.frame(exp_id = C4_sig.ids, cmap_score = C4_dz_cmap_scores)
 drugs <- data.frame(exp_id = sig.ids, cmap_score = dz_cmap_scores, p = p_values, q = q_values)
 results = list(drugs, C4_dz_signature)
