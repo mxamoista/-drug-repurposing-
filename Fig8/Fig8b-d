@@ -1,0 +1,66 @@
+BiocManager::install("GenomicFeatures")
+BiocManager::install("ChIPseeker")
+BiocManager::install("clusterProfiler")
+BiocManager::install("karyoploteR")
+BiocManager::install("ChIPpeakAnno")
+BiocManager::install('TxDb.Mmusculus.UCSC.mm9.knownGene')
+
+library(GenomicFeatures)
+library(ChIPseeker)
+library(clusterProfiler)
+library(devtools)
+library(karyoploteR)
+library(ChIPpeakAnno)
+library(TxDb.Mmusculus.UCSC.mm9.knownGene)
+# Import peak files 
+bedOEIL<- read.table(".//MACS2//OEIL-1//OEIL-1.bed")
+colnames(bedOEIL) <- c("seqnames", "start", "end"," name of peak","integer score","strand","fold-change","-log10pvalue","-log10qvalue"," relative summit position")
+OEIL1B_ATF4 <- toGRanges(bedOEIL, format="BED", header=FALSE)
+
+bedNCIL<- read.table(".//MACS2//NCIL-1//NCIL-1.bed")
+colnames(bedNCIL) <- c("seqnames", "start", "end"," name of peak","integer score","strand","fold-change","-log10pvalue","-log10qvalue"," relative summit position")
+NCIL1B_ATF4 <- toGRanges(bedNCIL, format="BED", header=FALSE)
+
+bedOE<- read.table(".//MACS2//OE//OE.bed")
+colnames(bedOE) <- c("seqnames", "start", "end"," name of peak","integer score","strand","fold-change","-log10pvalue","-log10qvalue"," relative summit position")
+OE_ATF4 <- toGRanges(bedOE, format="BED", header=FALSE)
+
+bedNC<- read.table(".//MACS2//NC//NC.bed")
+colnames(bedNC) <- c("seqnames", "start", "end"," name of peak","integer score","strand","fold-change","-log10pvalue","-log10qvalue"," relative summit position")
+NC_ATF4 <- toGRanges(bedNC, format="BED", header=FALSE)
+
+# OverlapsofPeaks for "Negative Control plus IL1β" VS "GLSOE plus IL1β",for the Fig8d
+ol <- findOverlapsOfPeaks(NCIL1B_ATF4, OEIL1B_ATF4)
+makeVennDiagram(ol, fill=c("#009E73", "#FFA500"), # circle fill color
+                col=c("#009E73", "#FFA500"), #circle border color
+                cat.col=c("#0072B2", "#0072B2"),cat.cex = F,cex=2)
+
+# OverlapsofPeaks for "Negative Control" VS "GLSOE",for the Fig8c
+o2 <- findOverlapsOfPeaks(NC_ATF4, OE_ATF4)
+makeVennDiagram(o2, fill=c("#009E73", "#FFA500"), # circle fill color
+                col=c("#009E73", "#FFA500"), #circle border color
+                cat.col=c("#0072B2", "#0072B2"),cat.cex = F,cex=2)
+
+#Load the corresponding TxDb package
+txdb <- TxDb.Mmusculus.UCSC.mm9.knownGene
+promoter <- getPromoters(TxDb=txdb, upstream=3000, downstream=3000)
+
+#The getTagMatrix function maps peaks to the promoter
+tagMatrixOEIL <- getTagMatrix(OEIL1B_ATF4, windows=promoter)
+tagMatrixNCIL <- getTagMatrix(NCIL1B_ATF4, windows=promoter)
+tagMatrixOE <- getTagMatrix(OE_ATF4, windows=promoter)
+tagMatrixNC <- getTagMatrix(NC_ATF4, windows=promoter)
+
+#Plot the peaks density within ± 3kb of the TSSs upon "GLSOE plus IL1β" group,Fig8b
+plotAvgProf(tagMatrixOEIL, xlim =c(-3000, 3000),xlab = "Genomic Region (5'->3')",ylab = "Peak Count Frequency", conf=0.95, origin_label = "TSS", facet="")
+
+#Plot the peaks density within ± 3kb of the TSSs upon "Negative Control plus IL1β" group,Fig8b
+plotAvgProf(tagMatrixNCIL, xlim =c(-3000, 3000),xlab = "Genomic Region (5'->3')",ylab = "Peak Count Frequency", conf=0.95, origin_label = "TSS", facet="")
+
+#Plot the peaks density within ± 3kb of the TSSs upon "GLSOE" group
+plotAvgProf(tagMatrixOE, xlim =c(-3000, 3000),xlab = "Genomic Region (5'->3')",ylab = "Peak Count Frequency", conf=0.95, origin_label = "TSS", facet="")
+
+#Plot the peaks density within ± 3kb of the TSSs upon "Negative Control" group
+plotAvgProf(tagMatrixNC, xlim =c(-3000, 3000),xlab = "Genomic Region (5'->3')",ylab = "Peak Count Frequency", conf=0.95, origin_label = "TSS", facet="")
+
+
