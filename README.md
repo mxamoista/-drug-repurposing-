@@ -12,5 +12,5 @@ Step two ,in "C1_LINCS_DESEQ2.R" and "C4_LINCS_DESEQ2.R",we first get differenti
 
 Step three,visualization of results.
 
-![](Computational drug repurposing screen.png)
+![](workflow.png)
 
