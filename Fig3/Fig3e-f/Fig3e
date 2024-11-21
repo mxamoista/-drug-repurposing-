@@ -165,12 +165,12 @@ print("COMPUTING q-values")
 library(qvalue)
 C1_q_values <- qvalue(C1_p_values)$qvalues
 
+#get candidate drugs
 C1_sig_info_selected$id <- rownames(C1_sig_info_selected)
 C1_sig_info_selected <- C1_sig_info_selected[!duplicated(C1_sig_info_selected$id),]
 C1_sig.ids <- C1_sig_info_selected$id
 C1_drugs <- data.frame(exp_id = C1_sig.ids, cmap_score = C1_dz_cmap_scores, p = C1_p_values, q = C1_q_values)
 C1_results = list(C1_drugs, C1_dz_signature)
-
 drug_preds <- results[[1]] #from cmap_predictions.RData
 dz_signature <- results[[2]]
 C1_drug_instances_all <- merge(C1_drugs, C1_sig_info_selected, by.x="exp_id", by.y="id")
