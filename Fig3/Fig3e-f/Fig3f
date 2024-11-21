@@ -4,6 +4,9 @@ library("gplots")
 library(RColorBrewer)
 library("plyr")
 library(grid)
+
+#==========================
+#Get classification dataframe
 k<-4
 dataset <- get_processed_dataset(sce.final)
 hc <- metadata(sce.final)$sc3$consensus[[as.character(k)]]$hc
@@ -28,6 +31,8 @@ C2.matrix <- matrix.filter.final[,rownames(C2)]
 C3.matrix <- matrix.filter.final[,rownames(C3)]
 C4.matrix <- matrix.filter.final[,rownames(C4)]
 
+#==========================
+#Get differential genes towards C4 using DESeq2
 C4VSOthers.matrix <- cbind(C1.matrix,C2.matrix,C3.matrix)
 C4VSOthers<-cbind(C4VSOthers.matrix ,C4.matrix)
 matrix.roundC4VSOthers <- round(C4VSOthers)
