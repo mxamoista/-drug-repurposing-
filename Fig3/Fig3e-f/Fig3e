@@ -1,9 +1,12 @@
+
 library(DESeq2)
 library(qvalue)
 library("gplots")
 library(RColorBrewer)
 library("plyr")
 library(grid)
+#==========================
+#Get classification dataframe
 k<-4
 dataset <- get_processed_dataset(sce.final)
 hc <- metadata(sce.final)$sc3$consensus[[as.character(k)]]$hc
@@ -28,6 +31,8 @@ C2.matrix <- matrix.filter.final[,rownames(C2)]
 C3.matrix <- matrix.filter.final[,rownames(C3)]
 C4.matrix <- matrix.filter.final[,rownames(C4)]
 
+#==========================
+#Get differential genes towards C1 using DESeq2
 C1VSOthers.matrix <- cbind(C2.matrix,C3.matrix,C4.matrix)
 C1VSOthers<-cbind(C1VSOthers.matrix ,C1.matrix)
 matrix.roundC1VSOthers <- round(C1VSOthers)
@@ -47,7 +52,7 @@ ddsC1VSOthers <- DESeqDataSetFromMatrix(countData = matrix.roundC1VSOthers,
 # Run the DESeq analysis
 ddsC1VSOthers <- DESeq(ddsC1VSOthers)
 
-# Get the results, with "C1" compared to "Others" (the default behavior)
+# Get the results, with "C1" compared to "Others"
 resC1VSOthers <- results(ddsC1VSOthers)
 
 resC1VSOthers <- data.frame(resC1VSOthers, stringsAsFactors = FALSE, check.names = FALSE)# res format conversion: use data.frame to convert to table form
@@ -67,7 +72,7 @@ gene_ids_C1 <- getBM(attributes=c("hgnc_symbol", "entrezgene_id"),
                      values=rownames(resC1VSOthers),
                      mart=mart)
 
-# Merge with your dataframe
+# Merge dataframe
 C1_dz_signature <- merge(resC1VSOthers, gene_ids_C1, by.x="gene", by.y="hgnc_symbol", all.x=TRUE)
 C1_dz_signature$entrezgene_id
 #for cmap, more stringent
