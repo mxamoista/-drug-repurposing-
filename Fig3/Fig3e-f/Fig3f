@@ -169,14 +169,13 @@ q_values <- qvalue(p_values)$qvalues
 C4_sig_info_selected$id <- rownames(C4_sig_info_selected)
 C4_sig_info_selected <- C4_sig_info_selected[!duplicated(C4_sig_info_selected$id),]#remove duplicate instances
 C4_sig.ids <- C4_sig_info_selected$id
-C4_drugs <- data.frame(exp_id = C4_sig.ids, cmap_score = C4_dz_cmap_scores)
 C4_drugs <- data.frame(exp_id = C4_sig.ids, cmap_score = C4_dz_cmap_scores, p = p_values, q = q_values)
-results = list(C4_drugs, C4_dz_signature)
+C4_results = list(C4_drugs, C4_dz_signature)
 
-drug_preds <- results[[1]] #from cmap_predictions.RData
-dz_signature <- results[[2]]
+C4_drug_preds <- C4_results[[1]] #from cmap_predictions.RData
+C4_dz_signature <- C4_results[[2]]
 C4_drug_instances_all <- merge(C4_drugs, C4_sig_info_selected, by.x="exp_id", by.y="id")
-save(drug_instances_all, file=("./lincs_myself/lincs_predictions_C4_MCF7_6h_allconcentration.RData"))
+save(C4_drug_instances_all, file=("./lincs_myself/lincs_predictions_C4_MCF7_6h_allconcentration.RData"))
 
 # min score of the same drug
 C4_drug_all_min_score <- aggregate(cmap_score ~ pert_iname,drug_instances_all, min)
