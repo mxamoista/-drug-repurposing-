@@ -1,1 +1,6 @@
-
+Here is the peak files for the ChIP-seq.
+Number of peaks in individual experiments: 
+NC.bed(Negative Control) 32097
+OE.bed(GLSOE) 15354
+NCIL-1.bed (Negative Control plus IL1β) 21853
+OEIL-1.bed (GLSOE plus IL1β) 10678
