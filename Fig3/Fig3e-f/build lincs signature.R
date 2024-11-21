@@ -1,6 +1,5 @@
 library(cmapR)
 library(tidyverse)
-library(cmapR)
 library(dplyr)
 
 col_meta <- read_gctx_meta("GSE92742_Broad_LINCS_Level5_COMPZ.MODZ_n473647x12328.gctx/GSE92742_Broad_LINCS_Level5_COMPZ.MODZ_n473647x12328.gctx", dim="col")
