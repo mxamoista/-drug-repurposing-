@@ -144,7 +144,7 @@ C1_results = list(C1_drugs, C1_dz_signature)
 C1_drug_preds <- C1_results[[1]] #from cmap_predictions.RData
 dz_signature <- C1_results[[2]]
 C1_drug_instances_all <- merge(C1_drugs, C1_sig_info_selected, by.x="exp_id", by.y="id")
-save(C1_drug_instances_all, file=("./lincs_myself/C1_lincs_predictions_PC3_6h_allconcentration.RData"))
+save(C1_drug_instances_all, file=("./lincs_myself/github/C1_lincs_predictions_PC3_6h_allconcentration.RData"))
 
 # min score of the same drug
 C1_drug_all_min_score <- aggregate(cmap_score ~ pert_iname,C1_drug_instances_all, min)
