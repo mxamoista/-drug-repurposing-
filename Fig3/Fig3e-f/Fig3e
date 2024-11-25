@@ -125,7 +125,6 @@ save(C1_random_cmap_scores,file='./lincs_myself/github/C1_random_cmap_PC3_6h_all
 ######## Compute the significance and save the min score of the same drug
 print("Loading random scores for subset")
 load('./lincs_myself/github/C1_random_cmap_PC3_6h_allconcentration.RData')
-save('./lincs_myself/github/C1_dz_cmap_scoress_PC3_6h_allconcentration.RData')
 C1_random_scores <- unlist(C1_random_cmap_scores)
 # Frequency-based p-value using absolute scores from sampling distribution to approximate two-tailed p-value
 print("COMPUTING p-values")
